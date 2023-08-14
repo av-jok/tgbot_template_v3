@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from pprint import pprint
 
 import betterlogging as bl
 from aiogram import Bot, Dispatcher
@@ -13,7 +14,11 @@ from tgbot.services import broadcaster
 
 
 async def on_startup(bot: Bot, admin_ids: list[int]):
-    await broadcaster.broadcast(bot, admin_ids, "Бот був запущений")
+    await broadcaster.broadcast(bot, admin_ids, "Бот запущен")
+
+
+async def on_shutdown(bot: Bot, admin_ids: list[int]):
+    await broadcaster.broadcast(bot, admin_ids, "Бот выключается")
 
 
 def register_global_middlewares(dp: Dispatcher, config: Config, session_pool=None):
@@ -87,6 +92,9 @@ async def main():
     setup_logging()
 
     config = load_config(".env")
+
+    pprint(config)
+
     storage = get_storage(config)
 
     bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
