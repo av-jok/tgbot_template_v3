@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from pprint import pprint
 
 import betterlogging as bl
 from aiogram import Bot, Dispatcher
@@ -92,24 +91,19 @@ async def main():
     setup_logging()
 
     config = load_config(".env")
-
-    pprint(config)
-
     storage = get_storage(config)
 
     bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
     dp = Dispatcher(storage=storage)
 
     dp.include_routers(*routers_list)
-
     register_global_middlewares(dp, config)
 
     await on_startup(bot, config.tg_bot.admin_ids)
     await dp.start_polling(bot)
 
-
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except (KeyboardInterrupt, SystemExit):
-        logging.error("Бот був вимкнений!")
+        logging.error("Бот был выключен!")

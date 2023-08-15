@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 # get BOT_NAME from .env !
-ENV BOT_NAME=mybotname
+ENV BOT_NAME=XpymXpymBot
 
 WORKDIR /usr/src/app/${BOT_NAME}
 
