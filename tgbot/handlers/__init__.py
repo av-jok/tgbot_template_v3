@@ -6,7 +6,7 @@ from .questions import questions_router
 
 routers_list = [
     admin_router,
-    user_router,
+    # user_router,
     questions_router,
     echo_router,  # echo_router must be last
 ]
