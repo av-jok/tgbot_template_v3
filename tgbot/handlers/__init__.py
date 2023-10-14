@@ -2,10 +2,12 @@
 from .admin import admin_router
 from .echo import echo_router
 from .user import user_router
+from .questions import questions_router
 
 routers_list = [
     admin_router,
     user_router,
+    questions_router,
     echo_router,  # echo_router must be last
 ]
 
