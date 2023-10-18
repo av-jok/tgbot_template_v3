@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
+from sqlalchemy.engine.url import URL
 
 from environs import Env
 
@@ -35,9 +36,6 @@ class DbConfig:
         """
         Constructs and returns a SQLAlchemy URL for this database configuration.
         """
-        # TODO: If you're using SQLAlchemy, move the import to the top of the file!
-        from sqlalchemy.engine.url import URL
-
         if not host:
             host = self.host
         if not port:
