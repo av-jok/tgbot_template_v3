@@ -7,7 +7,7 @@ from tgbot.keyboards.for_questions import get_yes_no_kb
 questions_router = Router()  # [1]
 
 
-@questions_router.message(Command("start"))  # [2]
+@questions_router.message(Command("start2"))  # [2]
 async def cmd_start(message: Message):
     await message.answer(
         "Вы довольны своей работой?",

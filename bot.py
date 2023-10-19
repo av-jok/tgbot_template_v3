@@ -87,14 +87,15 @@ def get_storage(config):
         return MemoryStorage()
 
 
+config = load_config(".env")
+storage = get_storage(config)
+
+bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
+dp = Dispatcher(storage=storage)
+
+
 async def main():
     setup_logging()
-
-    config = load_config(".env")
-    storage = get_storage(config)
-
-    bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
-    dp = Dispatcher(storage=storage)
 
     dp.include_routers(*routers_list)
     register_global_middlewares(dp, config)

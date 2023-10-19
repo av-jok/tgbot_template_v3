@@ -1,8 +1,32 @@
+import os
 from dataclasses import dataclass
 from typing import Optional
 from sqlalchemy.engine.url import URL
 
 from environs import Env
+
+commands = (
+    ("start", "See if the ship is sailing"),
+    ("help", "Get the command list"),
+    ("id", "Get the command list"),
+    # ("ip", "Проверка по IP адресу"),
+    # ("file", "Загрузка фото на сервер"),
+
+)
+
+
+USERS = {52384439, 539181195, 345467127, 252810436, 347748319, 494729634, 1016868504, 361955359, 1292364914, 449155597,
+         233703468, 842525963, 564569131, 1034083048, 224825221, 1369644834, 150862960, 1134721808, 1285798322,
+         700520296, 700520296}
+
+upload_dir_photo = os.path.dirname(os.path.realpath(__file__)) + "/_Photos/"
+upload_dir_data = os.path.dirname(os.path.realpath(__file__)) + "/_Data/"
+upload_dir_rack = os.path.dirname(os.path.realpath(__file__)) + "/_Rack/"
+
+HEADERS = {
+    'Content-Type': 'application/json',
+    'Authorization': 'Token 7f50ada4a4a66d4b2385e4f8f59a069bc219089b'
+}
 
 
 @dataclass
@@ -31,7 +55,6 @@ class DbConfig:
     database: str
     port: int = 5432
 
-    # For SQLAlchemy
     def construct_sqlalchemy_url(self, driver="asyncpg", host=None, port=None) -> str:
         """
         Constructs and returns a SQLAlchemy URL for this database configuration.
@@ -73,6 +96,7 @@ class TgBot:
 
     token: str
     admin_ids: list[int]
+    user_ids: list[int]
     use_redis: bool
 
     @staticmethod
@@ -82,8 +106,9 @@ class TgBot:
         """
         token = env.str("BOT_TOKEN")
         admin_ids = list(map(int, env.list("ADMINS")))
+        user_ids = list(map(int, USERS))
         use_redis = env.bool("USE_REDIS")
-        return TgBot(token=token, admin_ids=admin_ids, use_redis=use_redis)
+        return TgBot(token=token, admin_ids=admin_ids, user_ids=user_ids, use_redis=use_redis)
 
 
 @dataclass
