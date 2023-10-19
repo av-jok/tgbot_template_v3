@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+tgbot/_Data
+tgbot/_Photos
+tgbot/_Rack
+!tgbot/_Data/.dummy
+!tgbot/_Photos/.dummy
+!tgbot/_Rack/.dummy
+
 # Distribution / packaging
 .Python
 build/

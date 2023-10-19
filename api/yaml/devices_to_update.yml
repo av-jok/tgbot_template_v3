@@ -1,0 +1,3 @@
+### devices_to_update.yml
+- name: PHX-RTR01
+  mgmt_ip: 172.22.0.1
