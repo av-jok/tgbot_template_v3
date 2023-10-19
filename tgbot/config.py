@@ -164,10 +164,25 @@ class Miscellaneous:
     Attributes
     ----------
     other_params : str, optional
+    netbox_url : str, optional
+
         A string used to hold other various parameters as required (default is None).
     """
 
     other_params: str = None
+    netbox_url: str = None
+
+    @staticmethod
+    def from_env(env: Env):
+        """
+        Creates the RedisConfig object from environment variables.
+        """
+
+        netbox_url = env.str("REDIS_PASSWORD")
+
+        return Miscellaneous(
+            netbox_url=netbox_url
+        )
 
 
 @dataclass
@@ -210,7 +225,7 @@ def load_config(path: str = None) -> Config:
 
     return Config(
         tg_bot=TgBot.from_env(env),
-        # db=DbConfig.from_env(env),
+        db=DbConfig.from_env(env),
         redis=RedisConfig.from_env(env),
-        misc=Miscellaneous(),
+        misc=Miscellaneous.from_env(env),
     )

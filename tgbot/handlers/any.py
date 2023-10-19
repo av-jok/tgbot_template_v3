@@ -11,7 +11,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.media_group import MediaGroupBuilder
 from typing import Optional
 
-from tgbot.config import USERS, HEADERS, upload_dir_photo, upload_dir_data
+from tgbot.config import Config, HEADERS, upload_dir_photo, upload_dir_data
 from tgbot.filters.users import UserFilter
 
 # from pprint import pprint
@@ -88,8 +88,7 @@ async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data:
     await callback.answer()
 
 
-# @rate_limit(1)
-@dp.message_handler(filters.IDFilter(user_id=USERS), content_types=types.ContentType.PHOTO)
+@any_router.message.handlers(F.photo)
 async def scan_message(message: Message):
     if message.reply_to_message and re.match('^\\d{5}$', message.reply_to_message.text):
         is_exist = False
@@ -103,29 +102,29 @@ async def scan_message(message: Message):
                     )
         # logger.debug("Downloading photo start")
 
-        select_all_rows = f"SELECT * FROM `bot_photo` WHERE tid='{message.photo[-1].file_unique_id}' AND sid='{text}' LIMIT 1"
-        cur = db.query(select_all_rows)
-        row = cur.fetchall()
+        # select_all_rows = f"SELECT * FROM `bot_photo` WHERE tid='{message.photo[-1].file_unique_id}' AND sid='{text}' LIMIT 1"
+        # cur = db.query(select_all_rows)
+        # row = cur.fetchall()
 
-        rows = query_select(select_all_rows)
+        # rows = query_select(select_all_rows)
 
-        if not row:
-            insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
-            cur = db.query(insert_query)
-            cur.commit()
-            is_exist = True
-            logger.debug(f"is_exist = {is_exist}")
+        # if not row:
+        #     insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
+        #     cur = db.query(insert_query)
+        #     cur.commit()
+        #     is_exist = True
+        #     logger.debug(f"is_exist = {is_exist}")
 
-        if not rows:
-            insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
-            is_exist = query_insert(insert_query)
-            logger.debug(f"is_exist = {is_exist}")
+        # if not rows:
+        #     insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
+        #     is_exist = query_insert(insert_query)
+        #     logger.debug(f"is_exist = {is_exist}")
 
-        await message.photo[-1].download(destination_file=upload_dir_photo + filename)
-        destination = upload_dir_photo + filename
-        image_id = message.photo[len(message.photo) - 1].file_id
-        file_path = (await bot.get_file(image_id)).file_path
-        await bot.download_file(file_path, destination)
+        # await message.photo[-1].download(destination_file=upload_dir_photo + filename)
+        # destination = upload_dir_photo + filename
+        # image_id = message.photo[len(message.photo) - 1].file_id
+        # file_path = (await bot.get_file(image_id)).file_path
+        # await bot.download_file(file_path, destination)
 
         if is_exist:
             if message.from_user.id != 252810436:
@@ -137,13 +136,13 @@ async def scan_message(message: Message):
         await message.answer("Фотография должна быть ответом на Инв свича")
 
 
-@dp.message_handler(filters.IDFilter(user_id=USERS))
-async def echo(message: types.Message):
+@any_router.message(F.text)
+async def photo_msg(message: Message):
     if len(message.text) < 4:
         await message.answer("Запрос должен быть длиннее")
         return False
 
-    url = conf.netbox.netbox_url + "api/dcim/devices/?q=" + message.text
+    url = Config.misc.netbox_url + "api/dcim/devices/?q=" + message.text
     response = request("GET", url, headers=HEADERS, data='')
 
     json = response.json()
