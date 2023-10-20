@@ -9,6 +9,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.media_group import MediaGroupBuilder
 from tgbot.config import config, HEADERS, Switch, query_insert, query_select
 from tgbot.filters.users import UserFilter
+from sqlalchemy import select, insert
+
 # from pprint import pprint
 
 any_router = Router()

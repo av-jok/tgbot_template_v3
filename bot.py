@@ -11,6 +11,7 @@ from tgbot.handlers import routers_list
 from tgbot.middlewares.config import ConfigMiddleware
 from tgbot.middlewares.database import DatabaseMiddleware
 from tgbot.services import broadcaster
+from infrastructure.database.setup import create_engine, create_session_pool
 
 
 async def on_startup(bot: Bot, admin_ids: list[int]):
@@ -33,7 +34,7 @@ def register_global_middlewares(dp: Dispatcher, session_pool=None):
     """
     middleware_types = [
         ConfigMiddleware(config),
-        # DatabaseMiddleware(session_pool),
+        DatabaseMiddleware(session_pool),
     ]
 
     for middleware_type in middleware_types:
@@ -91,12 +92,14 @@ async def main():
     setup_logging()
 
     storage = get_storage(config)
+    engine=create_engine(config.db)
+    session_pool = create_session_pool(engine)
 
     bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
     dp = Dispatcher(storage=storage)
 
     dp.include_routers(*routers_list)
-    register_global_middlewares(dp)
+    register_global_middlewares(dp, session_pool)
 
     await on_startup(bot, config.tg_bot.admin_ids)
     await dp.start_polling(bot)

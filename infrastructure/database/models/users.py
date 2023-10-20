@@ -12,7 +12,7 @@ class User(Base, TimestampMixin, TableNameMixin):
     """
     This class represents a User in the application.
     If you want to learn more about SQLAlchemy and Alembic, you can check out the following link to my course:
-    https://www.udemy.com/course/sqlalchemy-alembic-bootcamp/?referralCode=E9099C5B5109EB747126
+    https://www.udemy.com/course/sqlalchemy-alembic-bootcamp/
 
     Attributes:
         user_id (Mapped[int]): The unique identifier of the user.
@@ -39,3 +39,37 @@ class User(Base, TimestampMixin, TableNameMixin):
 
     def __repr__(self):
         return f"<User {self.user_id} {self.username} {self.full_name}>"
+
+
+class Photo(Base, TimestampMixin, TableNameMixin):
+    """
+    This class represents a User in the application.
+    If you want to learn more about SQLAlchemy and Alembic, you can check out the following link to my course:
+    https://www.udemy.com/course/sqlalchemy-alembic-bootcamp/?referralCode=E9099C5B5109EB747126
+
+    Attributes:
+        id (Mapped[int]): The unique identifier of the user.
+        sid (Mapped[int]): The unique identifier of the user.
+        tid (Mapped[Optional[str]]): The username of the user.
+        name (Mapped[Optional[str]]): The username of the user.
+        file_id (Mapped[str]): The full name of the user.
+
+
+    Methods:
+        __repr__(): Returns a string representation of the User object.
+
+    Inherited Attributes:
+        Inherits from Base, TimestampMixin, and TableNameMixin classes, which provide additional attributes and functionality.
+
+    Inherited Methods:
+        Inherits methods from Base, TimestampMixin, and TableNameMixin classes, which provide additional functionality.
+
+    """
+    id: Mapped[int] = mapped_column(BIGINT, primary_key=True, autoincrement=True)
+    sid: Mapped[int] = mapped_column(BIGINT, primary_key=True)
+    tid: Mapped[Optional[str]] = mapped_column(String(128))
+    name: Mapped[Optional[str]] = mapped_column(String(128))
+    file_id: Mapped[str] = mapped_column(String(255))
+
+    def __repr__(self):
+        return f"<User {self.id} {self.name} {self.sid}>"
