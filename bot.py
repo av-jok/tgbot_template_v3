@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import List
 
 import betterlogging as bl
 from aiogram import Bot, Dispatcher
@@ -42,7 +43,7 @@ def register_global_middlewares(dp: Dispatcher, session_pool=None):
         dp.callback_query.outer_middleware(middleware_type)
 
 
-def setup_logging():
+def setup_logging(ignored: List[str] = ""):
     """
     Set up logging configuration for the application.
 
@@ -65,6 +66,11 @@ def setup_logging():
         format="%(filename)s:%(lineno)d #%(levelname)-8s [%(asctime)s] - %(name)s - %(message)s",
     )
     logger = logging.getLogger(__name__)
+
+    # for ignore in ignored:
+    #     logger.disable(ignore)
+    # logger.info('Logging is successfully configured')
+
     logger.info("Starting bot")
 
 
@@ -92,7 +98,7 @@ async def main():
     setup_logging()
 
     storage = get_storage(config)
-    engine=create_engine(config.db)
+    engine = create_engine(config.db, echo=True)
     session_pool = create_session_pool(engine)
 
     bot = Bot(token=config.tg_bot.token, parse_mode="HTML")
@@ -103,6 +109,7 @@ async def main():
 
     await on_startup(bot, config.tg_bot.admin_ids)
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     try:
