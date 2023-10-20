@@ -3,43 +3,39 @@ import os
 from loguru import logger
 from requests import request
 from aiogram import types, Router, F
-from aiogram import filters
-from aiogram.filters import Command
 from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.media_group import MediaGroupBuilder
-from typing import Optional
-
-from tgbot.config import Config, HEADERS, upload_dir_photo, upload_dir_data
+from tgbot.config import config, HEADERS, Switch, query_insert, query_select
 from tgbot.filters.users import UserFilter
-
 # from pprint import pprint
 
 any_router = Router()
 any_router.message.filter(UserFilter())
 
+sw = Switch(any_router)
+
 
 class IdButton(CallbackData, prefix="action"):
     action: str
-    value: Optional[int] = None
+    value: str
 
 
 async def send_photo_by_id(callback: types.CallbackQuery, photos, photos2):
-
     media = MediaGroupBuilder(caption="Media group caption")
 
     if photos is not None:
         for iterator in photos:
             img_data = request("GET", iterator['image'], headers=HEADERS, data='').content
-            filename = upload_dir_data + str(iterator['object_id']) + "_" + str(iterator['pid']) + ".jpg"
+            filename = config.misc.upload_dir_data + str(iterator['object_id']) + "_" + str(iterator['pid']) + ".jpg"
             with open(filename, 'wb') as photo:
                 photo.write(img_data)
             media.add(type="photo", media=FSInputFile(filename))
 
     if photos2 is not None:
         for iterator in photos2:
-            filename = upload_dir_photo + str(iterator['name'])
+            filename = config.misc.upload_dir_photo + str(iterator['name'])
             # pprint(filename)
             media.add(type="photo", media=FSInputFile(filename))
 
@@ -50,8 +46,7 @@ async def send_photo_by_id(callback: types.CallbackQuery, photos, photos2):
 
 @any_router.callback_query(IdButton.filter())
 async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data: IdButton):
-
-    switch = callback_data.value
+    switch = sw(callback_data.value)
     # pprint(switch.images)
     # pprint(switch.images2)
     logger.debug(f"action == {callback_data.action}")
@@ -80,7 +75,8 @@ async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data:
         if response == 0:
             host = "is up!"
 
-        await callback.send_message(callback.from_user.id, f"Switch: {switch.name} {host}", reply_to_message_id=callback.message.message_id)
+        await callback.send_message(callback.from_user.id, f"Switch: {switch.name} {host}",
+                                    reply_to_message_id=callback.message.message_id)
         await callback.answer()
         return True
 
@@ -88,7 +84,7 @@ async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data:
     await callback.answer()
 
 
-@any_router.message.handlers(F.photo)
+@any_router.message(F.photo)
 async def scan_message(message: Message):
     if message.reply_to_message and re.match('^\\d{5}$', message.reply_to_message.text):
         is_exist = False
@@ -100,13 +96,13 @@ async def scan_message(message: Message):
                     f"Файл - {filename}\n"
                     f"Отправил - {message.reply_to_message.from_user.first_name}"
                     )
-        # logger.debug("Downloading photo start")
+        logger.debug("Downloading photo start")
 
-        # select_all_rows = f"SELECT * FROM `bot_photo` WHERE tid='{message.photo[-1].file_unique_id}' AND sid='{text}' LIMIT 1"
+        select_all_rows = f"SELECT * FROM `bot_photo` WHERE tid='{message.photo[-1].file_unique_id}' AND sid='{text}' LIMIT 1"
         # cur = db.query(select_all_rows)
         # row = cur.fetchall()
 
-        # rows = query_select(select_all_rows)
+        rows = query_select(select_all_rows)
 
         # if not row:
         #     insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
@@ -115,20 +111,22 @@ async def scan_message(message: Message):
         #     is_exist = True
         #     logger.debug(f"is_exist = {is_exist}")
 
-        # if not rows:
-        #     insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
-        #     is_exist = query_insert(insert_query)
-        #     logger.debug(f"is_exist = {is_exist}")
+        if not rows:
+            insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
+            is_exist = query_insert(insert_query)
+            logger.debug(f"is_exist = {is_exist}")
 
-        # await message.photo[-1].download(destination_file=upload_dir_photo + filename)
-        # destination = upload_dir_photo + filename
+        # await message.photo[-1].download(destination_file=config.misc.upload_dir_photo + filename)
+        destination = config.misc.upload_dir_photo + filename
+        await message.download(message.photo[-1], destination=f"{destination}")
+
         # image_id = message.photo[len(message.photo) - 1].file_id
-        # file_path = (await bot.get_file(image_id)).file_path
-        # await bot.download_file(file_path, destination)
+        # file_path = (await message.get_file(image_id)).file_path
+        # await message.download_file(file_path, destination)
 
         if is_exist:
             if message.from_user.id != 252810436:
-                await bot.send_photo('252810436', message.photo[-1]["file_id"], caption=text_out)
+                await message.send_photo('252810436', message.photo[-1]["file_id"], caption=text_out)
             await message.answer("Принято " + filename)
         else:
             await message.answer("Такое фото уже есть в базе")
@@ -142,7 +140,7 @@ async def photo_msg(message: Message):
         await message.answer("Запрос должен быть длиннее")
         return False
 
-    url = Config.misc.netbox_url + "api/dcim/devices/?q=" + message.text
+    url = config.misc.netbox_url + "api/dcim/devices/?q=" + message.text
     response = request("GET", url, headers=HEADERS, data='')
 
     json = response.json()
@@ -169,7 +167,7 @@ async def photo_msg(message: Message):
                 f"Имя: {switch.name} {status}\n"
                 f"Инв № : {switch.id}\n"
                 f"{switch.device_type}\n"
-                f"{switch.ip}\n\n"    
+                f"{switch.ip}\n\n"
                 f"{switch.comments}"
             )
             builder = InlineKeyboardBuilder()

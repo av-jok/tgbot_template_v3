@@ -4,13 +4,13 @@ from .admin import admin_router
 # from .user import user_router
 from .start import start_router
 from .questions import questions_router
-# from .any import any_router
+from .any import any_router
 
 routers_list = [
     # admin_router,
     start_router,
     questions_router,
-    # any_router
+    any_router
 ]
 
 __all__ = [

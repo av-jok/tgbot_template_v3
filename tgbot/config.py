@@ -1,9 +1,18 @@
+import ipaddress
 import os
+import re
+
 from dataclasses import dataclass
 from typing import Optional
+from typing import Union
+import pymysql
+import pynetbox
+import urllib3
+from environs import Env
+from requests import request
 from sqlalchemy.engine.url import URL
 
-from environs import Env
+urllib3.disable_warnings()
 
 commands = (
     ("start", "See if the ship is sailing"),
@@ -11,17 +20,11 @@ commands = (
     ("id", "Get the command list"),
     # ("ip", "Проверка по IP адресу"),
     # ("file", "Загрузка фото на сервер"),
-
 )
-
 
 USERS = {52384439, 539181195, 345467127, 252810436, 347748319, 494729634, 1016868504, 361955359, 1292364914, 449155597,
          233703468, 842525963, 564569131, 1034083048, 224825221, 1369644834, 150862960, 1134721808, 1285798322,
          700520296, 700520296}
-
-upload_dir_photo = os.path.dirname(os.path.realpath(__file__)) + "/_Photos/"
-upload_dir_data = os.path.dirname(os.path.realpath(__file__)) + "/_Data/"
-upload_dir_rack = os.path.dirname(os.path.realpath(__file__)) + "/_Rack/"
 
 HEADERS = {
     'Content-Type': 'application/json',
@@ -171,6 +174,10 @@ class Miscellaneous:
 
     other_params: str = None
     netbox_url: str = None
+    netbox_api: str = None
+    upload_dir_photo: str = None
+    upload_dir_data: str = None
+    upload_dir_rack: str = None
 
     @staticmethod
     def from_env(env: Env):
@@ -178,10 +185,18 @@ class Miscellaneous:
         Creates the RedisConfig object from environment variables.
         """
 
-        netbox_url = env.str("REDIS_PASSWORD")
+        netbox_url = env.str("NETBOX_URL")
+        netbox_api = env.str("NETBOX_API")
+        upload_dir_photo = os.path.dirname(os.path.realpath(__file__)) + "/_Photos/"
+        upload_dir_data = os.path.dirname(os.path.realpath(__file__)) + "/_Data/"
+        upload_dir_rack = os.path.dirname(os.path.realpath(__file__)) + "/_Rack/"
 
         return Miscellaneous(
-            netbox_url=netbox_url
+            netbox_url=netbox_url,
+            netbox_api=netbox_api,
+            upload_dir_photo=upload_dir_photo,
+            upload_dir_data=upload_dir_data,
+            upload_dir_rack=upload_dir_rack
         )
 
 
@@ -229,3 +244,154 @@ def load_config(path: str = None) -> Config:
         redis=RedisConfig.from_env(env),
         misc=Miscellaneous.from_env(env),
     )
+
+
+# nb = pynetbox.api(url=Config.misc.netbox_url, token=Config.misc.netbox_api)
+# nb.http_session.verify = False
+
+
+class Switch:
+    """Заполняет данные по свичам"""
+    db: None
+    id: int
+    nid: int
+    name: str
+    device_type: str
+    rack: str
+    status: str
+    ip: ipaddress
+    address: str
+    msg = Union[str, int]
+    json = str
+    url = str
+    comments = str
+    images: list
+
+    def __init__(self, db):
+        self.db = db
+        self.cfg = load_config(".env")
+
+    def __call__(self, msg: str):
+        url = self.cfg.misc.netbox_url + "api/dcim/devices/" + str(msg) + "/"
+        response = request("GET", url, headers=HEADERS, data='')
+
+        json = response.json()
+
+        # devices = nb.dcim.devices.filter(id=msg)  # asset_tag__ic='авантел', role_id=4, status='offline'
+        # for device in devices:
+
+        # pprint(json['count'])
+        self.nid = json['id']
+        self.name = json['name'].lower()
+        self.device_type = json['device_type']['display']
+        self.address = json['site']['display']
+
+        if json['asset_tag']:
+            asset_tag = re.findall(r"(?<!\d)\d{5}(?!\d)", json['asset_tag'])
+            self.id = int(asset_tag[0])
+        else:
+            self.id = 0
+
+        if json['rack'] is not None:
+            self.rack = json['rack']['name']
+        else:
+            self.rack = ' '
+
+        self.status = json['status']['label']
+
+        if json['primary_ip'] is not None:
+            ip = json['primary_ip']['address'].split('/')
+            self.ip = ip[0]
+        else:
+            self.ip = None
+        self.url = json['url'].replace('/api/', '/')
+        self.comments = json['comments']
+        self.images = self.get_photo_in_netbox()
+        self.images2 = self.get_photo_in_base()
+
+        return self
+
+    def get_photo_in_netbox(self):
+        url = self.cfg.misc.netbox_url + "api/extras/image-attachments/?object_id=" + str(self.nid)
+        response = request("GET", url, headers=HEADERS, data='')
+        json = response.json()
+
+        # img = nb.extras.image_attachments.filter(
+        #     object_id=self.nid)  # asset_tag__ic='авантел', role_id=4, status='offline'
+
+        photos = list()
+        if json['count'] > 0:
+            for iterator in json['results']:
+                photos.append({
+                    'pid': iterator['id'],
+                    'image': iterator['image'],
+                    'name': iterator['name'],
+                    'object_id': iterator['object_id']}
+                )
+            return photos
+        else:
+            return None
+
+    def get_photo_in_base(self):
+        with self.db.cursor() as cursor:
+            select_all_rows = f"SELECT `sid` as pid, `name`, `file_id` as image FROM `bot_photo` WHERE sid='{self.id}'"
+            cursor.execute(select_all_rows)
+            rows = cursor.fetchall()
+
+        if rows:
+            return rows
+        else:
+            return None
+
+
+def query_select(query):
+    try:
+        base = pymysql.connect(host="jok.su",
+                               user="joker",
+                               password="Mrj0keer155",
+                               database="test",
+                               cursorclass=pymysql.cursors.DictCursor
+                               )
+        base.autocommit(True)
+        try:
+            with base.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+        finally:
+            base.close()
+
+    except Exception as ex:
+        print("Connection refused...")
+        print(ex)
+    return rows
+
+
+def query_insert(query):
+    is_true = None
+
+    try:
+        base = pymysql.connect(host="jok.su",
+                               user="joker",
+                               password="Mrj0keer155",
+                               database="test",
+                               cursorclass=pymysql.cursors.DictCursor
+                               )
+        base.autocommit(True)
+        try:
+            with base.cursor() as cursor:
+                cursor.execute(query)
+                base.commit()
+                is_true = True
+                base.close()
+        except Exception as ex:
+            print(ex)
+            is_true = False
+
+    except Exception as ex:
+        print("Connection refused...")
+        print(ex)
+
+    return is_true
+
+
+config = load_config(".env")
