@@ -1,5 +1,7 @@
 import random
 
+from requests import Response
+
 
 def generate_password(pwlength):
     alphabet = "abcdefghijklmnopqrstuvwxyz!@#$%^&*"
@@ -44,3 +46,16 @@ def main():
 
 
 main()
+
+
+class UserAvatarUpload(ListAPIView):
+    parser_classes = [MultiPartParser, FormParser]
+    serializer_class = ImageSerializer
+
+    def post(self, request, *args, **kwargs):
+        username = request.data['username']
+        file = request.data['image']
+        user = MyModel.objects.get(username=username)
+        user.image = file
+        user.save()
+        return Response("Image updated!", status=status.HTTP_200_OK)

@@ -1,5 +1,6 @@
 import re
 import os
+
 from loguru import logger
 from requests import request
 from aiogram import types, Router, F
@@ -7,19 +8,24 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.types import Message, FSInputFile
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.utils.media_group import MediaGroupBuilder
-from tgbot.config import config, HEADERS, Switch, query_insert, query_select
+
+from infrastructure.database.models.users import Photo
+from tgbot.config import config, db, HEADERS, Switch, query_insert, query_select
 from tgbot.filters.users import UserFilter
 from sqlalchemy import select, insert
+# from sqlalchemy.dialects.postgresql import insert
+from aiogram import Bot
 
 # from pprint import pprint
+
 
 any_router = Router()
 any_router.message.filter(UserFilter())
 
-sw = Switch(any_router)
+sw = Switch(db)
 
 
-class IdButton(CallbackData, prefix="action"):
+class IdButton(CallbackData, prefix="fab"):
     action: str
     value: str
 
@@ -47,16 +53,11 @@ async def send_photo_by_id(callback: types.CallbackQuery, photos, photos2):
 
 
 @any_router.callback_query(IdButton.filter())
-async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data: IdButton):
+async def callbacks_fab(callback: types.CallbackQuery, callback_data: IdButton):
     switch = sw(callback_data.value)
     # pprint(switch.images)
     # pprint(switch.images2)
     logger.debug(f"action == {callback_data.action}")
-
-    if callback_data.action == "ping":
-        user = callback_data.value
-        await callback.message.edit_text(f"Итого: {user}")
-    await callback.answer()
 
     if callback_data.action == 'photo':
         if switch.images or switch.images2:
@@ -77,8 +78,10 @@ async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data:
         if response == 0:
             host = "is up!"
 
-        await callback.send_message(callback.from_user.id, f"Switch: {switch.name} {host}",
-                                    reply_to_message_id=callback.message.message_id)
+        # await Message.send_message(callback.from_user.id, f"Switch: {switch.name} {host}",
+        #                            reply_to_message_id=callback.message.message_id)
+        await callback.answer(text=f"Switch: {switch.name} {host}")
+        # await callback.message.edit_text(f"Итого: {user}")
         await callback.answer()
         return True
 
@@ -87,7 +90,7 @@ async def callbacks_num_change_fab(callback: types.CallbackQuery, callback_data:
 
 
 @any_router.message(F.photo)
-async def scan_message(message: Message):
+async def scan_message(message: Message, bot: Bot):
     if message.reply_to_message and re.match('^\\d{5}$', message.reply_to_message.text):
         is_exist = False
         text = re.search('^\\d{5}$', message.reply_to_message.text)
@@ -116,15 +119,33 @@ async def scan_message(message: Message):
         if not rows:
             insert_query = f"INSERT INTO `bot_photo` (sid, name, tid, file_id) VALUES ('{text}', '{filename}', '{message.photo[-1].file_unique_id}', '{message.photo[-1].file_id}');"
             is_exist = query_insert(insert_query)
-            logger.debug(f"is_exist = {is_exist}")
+            logger.debug(f"is_exist = {is_exist}, {message.photo[-1]}")
 
-        # await message.photo[-1].download(destination_file=config.misc.upload_dir_photo + filename)
+        insert_sql = (
+            insert(Photo)
+            .values(
+                sid=text,
+                tid=message.photo[-1].file_unique_id,
+                name=filename,
+                file_id=message.photo[-1].file_id
+            )
+            # .on_conflict_do_update(
+            #     index_elements=[Photo.sid],
+            #     set_=dict(
+            #         name=filename,
+            #         tid=message.photo[-1].file_unique_id,
+            #     ),
+            # )
+            .returning(Photo)
+        )
+        print('11', insert_sql)
+
+        # result = await self.session.execute(insert_stmt)
+        # await self.session.commit()
+        # return result.scalar_one()
+
         destination = config.misc.upload_dir_photo + filename
-        await message.download(message.photo[-1], destination=f"{destination}")
-
-        # image_id = message.photo[len(message.photo) - 1].file_id
-        # file_path = (await message.get_file(image_id)).file_path
-        # await message.download_file(file_path, destination)
+        await bot.download(message.photo[-1], destination=f"{destination}")
 
         if is_exist:
             if message.from_user.id != 252810436:
@@ -173,23 +194,9 @@ async def photo_msg(message: Message):
                 f"{switch.comments}"
             )
             builder = InlineKeyboardBuilder()
-            builder.button(
-                text="Device", callback_data=IdButton(
-                    url=switch.url
-                )
-            )
-            builder.button(
-                text="Ping", callback_data=IdButton(
-                    action="ping",
-                    value=switch.nid
-                )
-            )
-            builder.button(
-                text="Фото", callback_data=IdButton(
-                    action="photo",
-                    value=switch.nid
-                )
-            )
+            builder.button(text="Device", url=switch.url)
+            builder.button(text="Ping", callback_data=IdButton(action="ping", value=int(switch.nid)))
+            builder.button(text="Фото", callback_data=IdButton(action="photo", value=int(switch.nid)))
             builder.adjust(3)
             logger.debug(f"{switch.nid}")
 

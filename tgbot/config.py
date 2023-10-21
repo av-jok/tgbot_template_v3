@@ -14,6 +14,13 @@ from sqlalchemy.engine.url import URL
 
 urllib3.disable_warnings()
 
+db = pymysql.connect(host="jok.su",
+                     user="joker",
+                     password="Mrj0keer155",
+                     database="test",
+                     cursorclass=pymysql.cursors.DictCursor)
+db.autocommit(True)
+
 commands = (
     ("start", "See if the ship is sailing"),
     ("help", "Get the command list"),
