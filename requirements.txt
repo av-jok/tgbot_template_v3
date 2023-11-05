@@ -10,9 +10,9 @@ ujson~=5.8.0
 yarl~=1.9.2
 
 # # For PostgreSQL sqlalchemy + alembic:
-sqlalchemy==2.0.22
-alembic==1.12.0
-asyncpg
+sqlalchemy==2.0.23
+alembic==1.12.1
+asyncpg==0.29.0
 
 loguru~=0.7.2
 aiohttp==3.8.6

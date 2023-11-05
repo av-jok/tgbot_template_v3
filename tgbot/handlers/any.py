@@ -12,6 +12,7 @@ from aiogram.utils.media_group import MediaGroupBuilder
 from infrastructure.database.models.users import Photo
 from tgbot.config import config, db, HEADERS, Switch, query_insert, query_select
 from tgbot.filters.users import UserFilter
+# from tgbot.loader import session_pool
 from sqlalchemy import select, insert
 # from sqlalchemy.dialects.postgresql import insert
 from aiogram import Bot
